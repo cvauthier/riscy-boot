@@ -1,0 +1,2 @@
+#define REG_SIZE 32
+#define REG_SPEC 5

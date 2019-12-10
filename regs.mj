@@ -1,0 +1,33 @@
+#include "consts.mj"
+
+register<n>(wr_data:[n], write) = (rd_data:[n]) where
+	if n = 0 then
+		rd_data = [];
+	else
+		rd_n1 = register<n-1>(wr_data[1..],write);
+		rd = reg(mux(write,wr_data[0],rd));
+		
+		rd_data = rd . rd_n1;
+	end if
+end where
+
+register_access<n, p>(rd_r1:[n],rd_r2:[n],wr_r:[n],wr_data:[p],write) = (rd_data1:[p],rd_data2:[p]) where
+	if n = 0 then
+		rd_data = register<p>(wr_data,write);
+		rd_data1 = rd_data;
+		rd_data2 = rd_data;
+	else
+		(rd_data1_0,rd_data2_0) = register_access<n-1, p>(rd_r1[1..],rd_r2[1..],wr_r[1..],wr_data,write & (not wr_r[0]));
+		(rd_data1_1,rd_data2_1) = register_access<n-1, p>(rd_r1[1..],rd_r2[1..],wr_r[1..],wr_data,write & wr_r[0]);
+
+		rd_data1 = mux(rd_r1[0],rd_data1_1,rd_data1_0);
+		rd_data2 = mux(rd_r2[0],rd_data2_1,rd_data2_0);
+	end if 
+end where
+
+register_block(rd_r1:[REG_SPEC],rd_r2:[REG_SPEC],wr_r:[REG_SPEC],wr_data:[REG_SIZE],rdwrite) = 
+							(rd_data1:[REG_SIZE],rd_data2:[REG_SIZE]) where
+	
+	(rd_data1,rd_data2) = register_access<REG_SPEC_SIZE,REG_SIZE>(rd_r1,rd_r2,wr_r,wr_data,rdwrite);
+end where
+
