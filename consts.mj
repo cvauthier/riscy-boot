@@ -1,2 +1,11 @@
-#define REG_SIZE 32
-#define REG_SPEC 5
+#ifndef CONSTS_H
+#define CONSTS_H
+
+const REG_SIZE = 32;
+const REG_SPEC = 5;
+
+const WORD_SIZE = 32;
+const RAM_ADDR_SIZE = 16;
+const ROM_ADDR_SIZE = 16;
+
+#endif

@@ -1,0 +1,13 @@
+#ifndef MEM_H
+#define MEM_H
+
+#include "consts.mj"
+
+access_memory(addr:[RAM_ADDR_SIZE],wr_data:[WORD_SIZE],wr_enable) = (rd_data:[WORD_SIZE]) where
+
+	ad = addr[..(RAM_ADDR_SIZE-3)];
+	rd_data = ram<RAM_ADDR_SIZE-2,WORD_SIZE>(ad,wr_enable,ad,wr_data);
+
+end where
+
+#endif

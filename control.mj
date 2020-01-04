@@ -1,0 +1,54 @@
+#include "alu.mj"
+#include "regs.mj"
+#include "memory.mj"
+#include "tools.mj"
+
+main() = () where
+
+	pc = register<ROM_ADDR_SIZE>(new_pc,true);
+	ins = rom<ROM_ADDR_SIZE,WORD_SIZE>(pc);
+
+	rs1 = ins[12..16];
+	rs2 = ins[7..11];
+	rd = ins[20..24];
+	op = ins[25..31];
+	fct = ins[17..19];
+
+	(*
+	branch = op[0] & op[1] & not(op[2] + op[3] + op[4]);
+	op_imm = op[2] & not(op[0] + op[1] + op[3] + op[4]);
+	oper   = op[1] & op[2] & not(op[0] + op[3] + op[4]);
+	jal    = op[0] & op[1] & op[3] & op[4] & not(op[2]);
+	lui    = op[1] & op[2] & op[4] & not(op[0] + op[3]);
+	load   = not(op[0] + op[1] + op[2] + op[3] + op[4]);
+	store  = op[1] & not(op[0] + op[2] + op[3] + op[4]);
+
+	aluop = ins[1] . fct;
+	memread = load;
+	memtoreg = load;
+	memwrite = store;
+	regwrite = oper + op_imm + jal + lui + load;
+	
+	imm = mux_n<WORD_SIZE>(lui,op[0..19] . power<12>(0),
+		  mux_n<WORD_SIZE>(op_imm + load,sign_extend<12,WORD_SIZE>(op[0..11]),
+		  mux_n<WORD_SIZE>(store,sign_extend<12,WORD_SIZE>(op[0..6] . op[20..24]),
+		  ...)));
+*)
+	actual_rs1 = mux_n<REG_SPEC>(lui,power<REG_SPEC>(0),rs1);
+	
+	(rs1_data,rs2_data) = register_block(actual_rs1,rs2,rd,wr_data,regwrite);
+
+	alu_data1 = rs1_data;
+	alu_data2 = mux(op_imm,imm,rs2_data)
+	(*aluop = ...*)
+	alu_res = alu(alu_data1,alu_data2,aluop);
+	
+
+
+	mem_data = access_memory(mem_addr,wr_data,memwrite);
+	
+	wr_data = mux_n<WORD_SIZE>(memtoreg,mem_data,alu_res);
+
+end where
+
+

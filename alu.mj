@@ -1,0 +1,54 @@
+#include "consts.mj"
+#include "tools.mj"
+
+alu_unit(a,b,ainv,binv,less,c_in,op:[3]) = (s,set,ovflw,c_out) where
+
+	ai = a ^ ainv;
+	bi = b ^ binv;
+	
+	xor_ab = ai ^ bi;
+	or_ab = ai + bi;
+	and_ab = ai & bi;
+	sum = xor_ab ^ c_in;
+
+	s1 = mux(op[1],mux(op[2],and_ab,or_ab),mux(op[2],false,xor_ab));
+	s0 = mux(op[1],false,mux(op[2],false,sum));
+	
+	s = mux(op[0],s1,s0);
+	set = sum;
+	ovflw = (ai & bi & not(sum)) + (not(ai) & not(bi) & sum);
+	c_out = and_ab + (ai & c_in) + (bi & c_in);
+end where
+
+fulladder(a,b,c_in) = (s,c_out) where
+	t = a ^ b;
+	s = t ^ c_in;
+	c_out = (a&b) + (t&c_in);
+end where
+
+adder<n>(a:[n], b:[n], c_in) = (o:[n], c_out) where
+	if n = 0 then
+		o = [];
+		c_out = 0;
+	else
+		(s_n1,c_n1) = adder<n-1>(a[1..],b[1..],c_in);
+		(s_n,c_out) = fulladder(a[0],b[0],c_n1);
+		o = s_n . s_n1;
+	end if
+end where
+
+sign_extend<n,p>(i:[n]) = (o:[p]) where
+	if n = p then
+		o = i;
+	else
+		o = i[0] . sign_extend<n,p-1>(i);
+	end if
+end where
+
+alu(a:[WORD_SIZE],b:[WORD_SIZE],op:[4]) = (s:[WORD_SIZE]) where
+
+	binv = op[0];
+
+end where
+
+
