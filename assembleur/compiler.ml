@@ -20,26 +20,26 @@ let opc_op    = 0b0110011
 let extract i1 i2 n = (n lsr i1) land ((1 lsl (i2-i1+1)) - 1)
 
 let compile_ins labels curr = function
-  | Ilui(n,rd) -> (n lsl 12) lor (rd lsl rd_ofs) lor opc_lui
+  | Ilui(n,rd) -> (n lsl 12) lor (rd lsl rd_ofs) lor opc_lui
 
-	| Ijal(lbl,rd) -> let n = (Hashtbl.find labels lbl) - curr in
+	| Ijal(lbl,rd) -> let n = (Hashtbl.find labels lbl) - curr in
     ((extract 20 20 n) lsl 31) lor ((extract 1 10 n) lsl 21) lor ((extract 11 11 n) lsl 20) lor ((extract 12 19 n) lsl 12) lor
       (rd lsl rd_ofs) lor opc_jal
 	
   | Ijalr(n,rs1,rd) -> ((extract 0 11 n) lsl 20) lor (rs1 lsl rs1_ofs) lor (rd lsl rd_ofs) lor opc_jalr
   
-  | Ilw(rs1,n,rd) -> ((extract 0 11 n) lsl 25) lor (rs1 lsl rs1_ofs) lor (rd lsl rs2_ofs) lor (0b010 lsl f3_ofs) lor opc_load 
+  | Ilw(rs1,n,rd) -> ((extract 0 11 n) lsl 25) lor (rs1 lsl rs1_ofs) lor (rd lsl rs2_ofs) lor (0b010 lsl f3_ofs) lor opc_load 
 	
-  | Isw(rs2,rs1,n) -> ((extract 5 11 n) lsl 25) lor (rs2 lsl rs2_ofs) lor (rs1 lsl rs1_ofs) lor (0b010 lsl f3_ofs) lor 
+  | Isw(rs2,rs1,n) -> ((extract 5 11 n) lsl 25) lor (rs2 lsl rs2_ofs) lor (rs1 lsl rs1_ofs) lor (0b010 lsl f3_ofs) lor 
                         ((extract 0 4 n) lsl rd_ofs) lor opc_store
 
-	| IBranch(b,rs1,rs2,lbl) -> 
+	| IBranch(b,rs1,rs2,lbl) -> 
       let n = (Hashtbl.find labels lbl) - curr in
       let brnch = match b with | Eq -> 0b000 | Ne -> 0b001 | Lt -> 0b100 | Ge -> 0b101 in
       ((extract 12 12 n) lsl 31) lor ((extract 5 10 n) lsl 25) lor (rs2 lsl rs2_ofs) lor (rs1 lsl rs1_ofs) lor (brnch lsl f3_ofs) lor
         ((extract 1 4 n) lsl 8) lor ((extract 11 11 n) lsl 7) lor opc_brnch
 
-	| IUnop(op,n,rs1,rd) ->
+	| IUnop(op,n,rs1,rd) ->
       let fct = match op with | Addi -> 0b000 | Xori -> 0b100 | Ori -> 0b110 | Andi -> 0b111 in
       ((extract 0 11 n) lsl n) lor (rs1 lsl rs1_ofs) lor (fct lsl f3_ofs) lor (rd lsl rd_ofs) lor opc_opimm
 
@@ -47,6 +47,8 @@ let compile_ins labels curr = function
       let fct3 = match op with | Add | Sub -> 0b000 | Xor -> 0b100 | Or -> 0b110 | And -> 0b111 in
       let fct7 = match op with | Add | Xor | Or | And -> 0b0000000 | Sub -> 0b0100000 in
       (fct7 lsl f7_ofs) lor (rs2 lsl rs2_ofs) lor (rs1 lsl rs1_ofs) lor (fct3 lsl f3_ofs) lor (rd lsl rd_ofs) lor opc_op
+
+let get = function | None -> assert false | Some(x) -> x
 
 let compile_program prog out =
   let labels = Hashtbl.create 17 in

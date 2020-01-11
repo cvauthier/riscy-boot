@@ -2,7 +2,7 @@
   open Ast
 %}
 
-%token <int64> CONST
+%token <int> CONST
 %token <int> REG
 %token <string> IDENT
 %token COMMA DPOINT
@@ -38,7 +38,7 @@ instruction:
               let op = match opcode with
                 | "addi" -> Addi | "xori" -> Xori | "andi" -> Andi | "ori" -> Ori
                 | _ -> assert false in
-               IUnop(op,r1,r2)
+               IUnop(op,n,r1,r2)
            end
     }
   | opcode = IDENT r1 = REG COMMA r2 = REG COMMA lbl = IDENT
@@ -47,6 +47,6 @@ instruction:
         | "beq" -> Eq | "bne" -> Ne | "blt" -> Lt | "bge" -> Ge
         | _ -> assert false in IBranch(branch,r1,r2,lbl)
     }
-  | opcode = IDENT n = CONST { assert opcode = "lui"; Ilui(n) }
-  | opcode = IDENT lbl = IDENT COMMA rd = REG { assert opcode = "jal"; Ijal(lbl,rd) }
+  | opcode = IDENT n = CONST COMMA rd = REG { assert (opcode = "lui"); Ilui(n,rd) }
+  | opcode = IDENT lbl = IDENT COMMA rd = REG { assert (opcode = "jal"); Ijal(lbl,rd) }
 
