@@ -1,0 +1,11 @@
+#!/bin/bash
+
+base=`dirname $1`/`basename $1 .mj`
+rm -f out.mj
+cpp -P $1 > out.mj
+./mjc.byte out.mj
+mv out.net $base.net
+rm out.mj
+./neatlist $base.net
+rm $base.net
+
