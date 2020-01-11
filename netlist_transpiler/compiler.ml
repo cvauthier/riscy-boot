@@ -5,7 +5,7 @@ type vflag = | Input | Output | Local
 type var_info = int * vflag (* size, output *)
 
 type env = { vars : (string,var_info) Hashtbl.t;
-						 regs : (string,var_info) Hashtbl.t;
+						 regs : (string,int) Hashtbl.t;
 						 mems : (string,int*int) Hashtbl.t; (* nb of addr, bytes / word *)
 						 
 						 inputs : (string*var_info) list;
@@ -52,13 +52,13 @@ let val_of_arg env fmt = function
 (* Compile le ième octet d'une expression *)
 let compile_expr_byte env resvar i fmt = function
 	| Earg a -> byte_of_arg env i fmt a
-	| Ereg id -> fprintf fmt "st->reg_%s" id  
+	| Ereg id -> fprintf fmt "st->regs[%d]" (Hashtbl.find env.regs id)  
   | Enot a -> fprintf fmt "~%a" (byte_of_arg env i) a
   | Ebinop(op,a1,a2) -> 
 		fprintf fmt "%s(%a%s%a)" (match op with | Or | And | Xor -> "" | Nand -> "~")
 								 (byte_of_arg env i) a1
 								 (match op with | Or -> "|" | And | Nand -> "&" | Xor -> "^")
-								 (byte_of_arg env i) a1
+								 (byte_of_arg env i) a2
   | Emux(a,a1,a2) -> fprintf fmt "%a ? %a : %a" (byte_of_arg env 0) a
 												  (byte_of_arg env i) a1
 												  (byte_of_arg env i) a2
@@ -98,7 +98,7 @@ let compile_updates fmt env eqs =
 			end
 		| Earg _ | Ereg _ | Enot _ | Ebinop _ | Emux _ | Erom _ | Econcat _ | Eselect _ | Eslice _ -> () in
 
-	Hashtbl.iter (fun id vinfo -> fprintf fmt "@,st->reg_%s = %a;" id (byte_of_var 0) (id,vinfo)) env.regs; 
+	Hashtbl.iter (fun id i -> fprintf fmt "@,st->regs[%d] = %a;" i (byte_of_var 0) (id,(Hashtbl.find env.vars id))) env.regs; 
 	List.iter aux eqs
 
 let build_env prog =
@@ -117,8 +117,9 @@ let build_env prog =
 	let env = { env with inputs = List.map aux2 prog.p_inputs; outputs = List.map aux2 prog.p_outputs } in
 	
 	(* Mémoires / registres *)
+	let i = ref 0 in 
 	let process_eq (id,expr) = match expr with
-		| Ereg id -> Hashtbl.replace env.regs id (Hashtbl.find env.vars id)
+		| Ereg id -> if not (Hashtbl.mem env.regs id) then Hashtbl.add env.regs id !i; incr i
 		| Erom(asize,wsize,_) | Eram(asize,wsize,_,_,_,_) -> Hashtbl.replace env.mems id (1 lsl asize, (wsize+7)/8)
 		| Earg _ | Enot _ | Ebinop _ | Emux _ | Econcat _ | Eselect _ | Eslice _ -> () in
 	List.iter process_eq prog.p_eqs;
@@ -149,7 +150,7 @@ let compile_header name env out =
 	
 	let print_struct fmt () = 
 		Hashtbl.iter (fun s (nb_addr,nb_bytes) -> fprintf fmt "@,char **mem_%s; // Intended size : %d x %d" s nb_addr nb_bytes) env.mems;
-		Hashtbl.iter (fun s _ -> fprintf fmt "@,char reg_%s;" s) env.regs in
+		fprintf fmt "@,char *regs; // Intended size : %d" (Hashtbl.length env.regs) in
 
 	fprintf fmt "@[<v 0>#ifndef %s_H@,#define %s_H@,@," name name;
 	fprintf fmt "struct State@,@[<v 2>{%a@]@,};@,@,typedef struct State State;@,@," print_struct ();
