@@ -8,8 +8,8 @@ let spec = []
 let file =
   let file = ref None in
   let set_file s =
-    if not (Filename.check_suffix s ".risc") then
-      raise (Arg.Bad "no .go extension");
+    if not (Filename.check_suffix s ".s") then
+      raise (Arg.Bad "no .s extension");
     file := Some s
   in
   Arg.parse spec set_file usage;
@@ -28,7 +28,7 @@ let () =
     let prog = Parser.program Lexer.token lb in
     close_in c;
 
-    let prog_out = open_out_bin ((String.sub file 0 ((String.length file)-5))^".bin") in 
+    let prog_out = open_out ((String.sub file 0 ((String.length file)-2))^".bin") in 
     Compiler.compile_program prog prog_out;
 		close_out prog_out
   with

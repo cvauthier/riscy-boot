@@ -7,7 +7,7 @@
 
 main() = () where
 	
-	pc = register<ROM_ADDR_SIZE>(new_pc,true);
+	pc = ram<1,ROM_ADDR_SIZE>(0,1,0,new_pc);
 	(new_pc,useless) = adder<ROM_ADDR_SIZE>(pc,power<ROM_ADDR_SIZE-3>(0).1.0.0,0);
 	ins = rom<ROM_ADDR_SIZE,WORD_SIZE>(pc);
 

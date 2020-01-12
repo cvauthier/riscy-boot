@@ -11,9 +11,10 @@ type env = { vars : (string,var_info) Hashtbl.t;
 						 inputs : (string*var_info) list;
 						 outputs : (string*var_info) list } 
 
-let length_arg env = function | Avar id -> fst (Hashtbl.find env.vars id)
-															| Aconst (VBit _) -> 1
-															| Aconst (VBitArray v) -> ((Array.length v) + 7) / 8
+let length n = (n + 7) / 8
+let size_arg env = function | Avar id -> (fst (Hashtbl.find env.vars id))
+														| Aconst (VBit _) -> 1
+														| Aconst (VBitArray v) -> (Array.length v)
 
 let print_var_ident fmt (id,(_,vf)) = 
 	fprintf fmt "%s%s" (match vf with | Local -> "v_" | Input -> "in_" | Output -> "out_") id
@@ -24,27 +25,47 @@ let var_to_int var =
 		res := (2 * !res) + (if var.(i) then 1 else 0)
 	done; !res
 
+(* Pareil mais inversé pour correspondre au format des données *)
+let var_to_val var = 
+	let res = ref 0 in
+	for i = (Array.length var)-1 downto 0 do
+		res := (2 * !res) + (if var.(i) then 1 else 0)
+	done; !res
+
 let byte_of_var i fmt (id,(size,vf)) =
 	let v = id,(size,vf) in
-	if (vf = Output) && (size = 1) then fprintf fmt "*%a" print_var_ident v
-	else if size > 1 then fprintf fmt "%a[%d]" print_var_ident v i
+	let l = length size in
+	if (vf = Output) && (l = 1) then fprintf fmt "*%a" print_var_ident v
+	else if l > 1 then fprintf fmt "%a[%d]" print_var_ident v i
 	else fprintf fmt "%a" print_var_ident v
 
-let print_var_decl fmt (id,(size,vf)) = byte_of_var size fmt (id,(size,vf)) 
+let print_var_decl fmt (id,(size,vf)) = byte_of_var (length size) fmt (id,(size,vf)) 
 
 let byte_of_arg env i fmt = function
 	| Avar id -> byte_of_var i fmt (id,Hashtbl.find env.vars id)
 	| Aconst (VBit b) -> fprintf fmt "%d" (if b then 1 else 0)
-	| Aconst (VBitArray v) -> fprintf fmt "%d" (var_to_int (Array.sub v (i*8) 8)) 
+	| Aconst (VBitArray v) -> fprintf fmt "%d" (var_to_val (Array.sub v (i*8) 8)) 
 
-let val_of_arg env fmt = function
+let slice_of_arg env i1 i2 fmt a =
+	let q = i1 / 8 and r = i1 mod 8 and l = i2-i1+1 in
+	let print_mask fmt l = if l < 8 then fprintf fmt "&%d" ((1 lsl l) - 1) in
+	if r = 0 then
+		fprintf fmt "%a%a" (byte_of_arg env q) a print_mask l
+	else if 8-r >= l then
+		fprintf fmt "(%a>>%d)%a" (byte_of_arg env q) a r print_mask l
+	else
+		fprintf fmt "((%a>>%d)|(%a<<%d))%a" (byte_of_arg env q) a r
+																			 	 (byte_of_arg env (q+1)) a (8-r) print_mask l
+
+let int_of_arg env fmt = function
 	| Avar id -> begin
 			let (size,vf) = Hashtbl.find env.vars id in
+			let l = length size in 
 			let aux fmt i = byte_of_var i fmt (id,(size,vf)) in
-			aux fmt 0;
-			if size >= 2 then fprintf fmt "+%a<<8" aux 1;
-			if size >= 3 then fprintf fmt "+%a<<16" aux 2;
-			if size >= 4 then fprintf fmt "+%a<<24" aux 3
+			fprintf fmt "((int) %a)" aux 0;
+			if l >= 2 then fprintf fmt "+((int)%a)<<8" aux 1;
+			if l >= 3 then fprintf fmt "+((int)%a)<<16" aux 2;
+			if l >= 4 then fprintf fmt "+((int)%a)<<24" aux 3
 		end
 	| Aconst (VBit b) -> fprintf fmt "%d" (if b then 1 else 0)
 	| Aconst (VBitArray v) -> fprintf fmt "%d" (var_to_int v)
@@ -64,25 +85,21 @@ let compile_expr_byte env resvar i fmt = function
 												  (byte_of_arg env i) a2
   | Erom(_,_,raddr) 
   | Eram(_,_,raddr,_,_,_) ->
-			fprintf fmt "st->mem_%s[%a][%d]" resvar (val_of_arg env) raddr i
+			fprintf fmt "st->mem_%s[%a][%d]" resvar (int_of_arg env) raddr i
   | Econcat(a1,a2) -> begin
-			let l = length_arg env a1 in
-			if i >= l then byte_of_arg env (i-l) fmt a2
-			else byte_of_arg env i fmt a1
+			let s1 = size_arg env a1 and s2 = size_arg env a2 in
+			if (i+1)*8 > s1 && i*8 < s1 then 
+				fprintf fmt "(%a)|((%a)<<%d)" (slice_of_arg env (i*8) (s1-1)) a1 (slice_of_arg env 0 ((i+1)*8-s1-1)) a2 (s1 mod 8)
+			else if i*8 < s1 then byte_of_arg env i fmt a1
+			else slice_of_arg env (i*8-s1) (min (i*8-s1+8) (s2-1)) fmt a2
 		end
-	| Eselect(i1,a) 
-  | Eslice(i1,_,a) -> begin
-			if i1 mod 8 = 0 then byte_of_arg env (i + (i1/8)) fmt a
-			else begin
-				let r = i1 mod 8 and q = i1 / 8 in 
-				fprintf fmt "((%a>>%d)+(%a>>%d))&255" (byte_of_arg env (i + q)) a r
-																							(byte_of_arg env (i + q + 1)) a (8-r)
-			end
-		end
+	| Eselect(i1,a) -> slice_of_arg env i1 i1 fmt a
+  | Eslice(i1,i2,a) -> slice_of_arg env (i1+i*8) (min (i1 + i*8 + 7) i2) fmt a  
 
 let compile_eq fmt env (id,expr) = 
 	let size,vf = Hashtbl.find env.vars id in
-	for i = 0 to size-1 do
+	let l = length size in
+	for i = 0 to l-1 do
 		fprintf fmt "@,%a = %a;" (byte_of_var i) (id,(size,vf)) (compile_expr_byte env id i) expr
 	done
 
@@ -92,7 +109,7 @@ let compile_updates fmt env eqs =
 				let l = (wsize+7) / 8 in
 				fprintf fmt "@,if (%a)@,@[<v 2>{" (byte_of_arg env 0) we;
 				for i = 0 to l-1 do
-					fprintf fmt "@,st->mem_%s[%a][%d] = %a;" id (val_of_arg env) waddr i (byte_of_arg env i) data
+					fprintf fmt "@,st->mem_%s[%a][%d] = %a;" id (int_of_arg env) waddr i (byte_of_arg env i) data
 				done;
 				fprintf fmt "@]@,}"
 			end
@@ -106,8 +123,8 @@ let build_env prog =
 							inputs = []; outputs = []; } in
 	
 	(* Variables *)
-	let length = function | TBit -> 1 | TBitArray n -> (n+7)/8 in 
-	Env.iter (fun id ty -> Hashtbl.replace env.vars id ((length ty),Local)) prog.p_vars;
+	let ty_size = function | TBit -> 1 | TBitArray n -> n in 
+	Env.iter (fun id ty -> Hashtbl.replace env.vars id ((ty_size ty),Local)) prog.p_vars;
 	
 	(* Entrées / sorties *)
 	let aux1 flag id = let s,_ = Hashtbl.find env.vars id in Hashtbl.replace env.vars id (s,flag) in
@@ -127,7 +144,7 @@ let build_env prog =
 
 let compile_prototype fmt env = 
 	let print_var fmt (id,(size,vf)) =
-		fprintf fmt ", char %a" print_var_decl (id,(size,vf)) in	
+		fprintf fmt ", unsigned char %a" print_var_decl (id,(size,vf)) in	
 
 	fprintf fmt "void compute_cycle(State *st";
 	List.iter (print_var fmt) env.inputs;
@@ -136,7 +153,7 @@ let compile_prototype fmt env =
 
 let compile_source name env prog out =
 	let fmt = Format.formatter_of_out_channel out in
-	let aux id (size,vf) = if vf = Local then fprintf fmt "@,char %a;" print_var_decl (id,(size,vf)) in
+	let aux id (size,vf) = if vf = Local then fprintf fmt "@,unsigned char %a;" print_var_decl (id,(size,vf)) in
 
 	fprintf fmt "@[<v 0>#include \"%s.h\"@,@,%a@,@[<v 2>{" name compile_prototype env;
 	Hashtbl.iter aux env.vars;
@@ -149,8 +166,8 @@ let compile_header name env out =
 	let name = String.uppercase_ascii name in
 	
 	let print_struct fmt () = 
-		Hashtbl.iter (fun s (nb_addr,nb_bytes) -> fprintf fmt "@,char **mem_%s; // Intended size : %d x %d" s nb_addr nb_bytes) env.mems;
-		fprintf fmt "@,char *regs; // Intended size : %d" (Hashtbl.length env.regs) in
+		Hashtbl.iter (fun s (nb_addr,nb_bytes) -> fprintf fmt "@,unsigned char **mem_%s; // Intended size : %d x %d" s nb_addr nb_bytes) env.mems;
+		fprintf fmt "@,unsigned char *regs; // Intended size : %d" (Hashtbl.length env.regs) in
 
 	fprintf fmt "@[<v 0>#ifndef %s_H@,#define %s_H@,@," name name;
 	fprintf fmt "struct State@,@[<v 2>{%a@]@,};@,@,typedef struct State State;@,@," print_struct ();

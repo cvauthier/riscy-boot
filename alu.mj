@@ -10,7 +10,7 @@ end where
 adder<n>(a:[n], b:[n], c_in) = (o:[n], c_out) where
 	if n = 0 then
 		o = [];
-		c_out = 0;
+		c_out = c_in;
 	else
 		(s_n1,c_n1) = adder<n-1>(a[1..],b[1..],c_in);
 		(s_n,c_out) = fulladder(a[0],b[0],c_n1);
@@ -38,10 +38,10 @@ alu_unit(a,b,ainv,binv,c_in,op:[3]) = (s,c_out) where
 
 	(* 000 - add, 100 - xor, 110 - or, 111 - and *)
 
-	s1 = mux(op[1],mux(op[0],and_ab,or_ab),mux(op[0],false,xor_ab));
-	s0 = mux(op[1],false,mux(op[0],false,sum));
+	s1 = mux(op[1],mux(op[2],and_ab,or_ab),mux(op[2],false,xor_ab));
+	s0 = mux(op[1],false,mux(op[2],false,sum));
 	
-	s = mux(op[2],s1,s0);
+	s = mux(op[0],s1,s0);
 	c_out = and_ab + (ai & c_in) + (bi & c_in);
 end where
 

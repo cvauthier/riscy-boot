@@ -15,6 +15,9 @@ register<n>(wr_data:[n], write) = (rd_data:[n]) where
 	end if
 end where
 
+(*
+Implémentation possible de registres utilisant seulement des reg 
+
 register_access<n, p>(rd_r1:[n], rd_r2:[n], wr_r:[n], wr_data:[p], write) = (rd_data1:[p], rd_data2:[p]) where
 	if n = 0 then
 		rd_data1 = register<p>(wr_data,write);
@@ -26,12 +29,14 @@ register_access<n, p>(rd_r1:[n], rd_r2:[n], wr_r:[n], wr_data:[p], write) = (rd_
 		rd_data1 = mux_n<p>(rd_r1[0],rd_data1_1,rd_data1_0);
 		rd_data2 = mux_n<p>(rd_r2[0],rd_data2_1,rd_data2_0);
 	end if 
-end where
+end where*)
 
 register_block(rd_r1:[REG_SPEC], rd_r2:[REG_SPEC], wr_r:[REG_SPEC], wr_data:[REG_SIZE], rdwrite) = 
 							(rd_data1:[REG_SIZE], rd_data2:[REG_SIZE]) where
 	
-	(rd_data1,rd_data2) = register_access<REG_SPEC,REG_SIZE>(rd_r1, rd_r2, wr_r, wr_data, rdwrite);
+	rd_data1 = ram<REG_SPEC,REG_SIZE>(rd_r1, rdwrite, wr_r, wr_data);
+	rd_data2 = ram<REG_SPEC,REG_SIZE>(rd_r2, rdwrite, wr_r, wr_data);
+
 end where
 
 #endif

@@ -1,11 +1,17 @@
 #!/bin/bash
 
-base=`dirname $1`/`basename $1 .mj`
-rm -f out.mj
-cpp -P $1 > out.mj
-./mjc.byte out.mj
-mv out.net $base.net
-rm out.mj
-./neatlist $base.net
-rm $base.net
+./compile_mj regs_main.mj
+mv regs_main.c processeur/test_regs
+mv regs_main.h processeur/test_regs
+cd processeur/test_regs
+gcc -g main.c regs_main.c regs_main.h
+./a.out
+
+cd ../..
+./compile_mj control.mj
+mv control.c processeur/
+mv control.h processeur/
+cd processeur
+gcc -g main.c control.c control.h
+./a.out
 
