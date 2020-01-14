@@ -12,6 +12,5 @@ cd ../..
 mv control.c processeur/
 mv control.h processeur/
 cd processeur
-gcc -g main.c control.c control.h
-./a.out
+./compile
 

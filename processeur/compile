@@ -1,0 +1,3 @@
+./riscasm program.s
+gcc main.c control.c control.h 
+./a.out

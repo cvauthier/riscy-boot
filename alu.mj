@@ -18,6 +18,12 @@ adder<n>(a:[n], b:[n], c_in) = (o:[n], c_out) where
 	end if
 end where
 
+adder_nocarry<n>(a:[n], b:[n], c_in) = (o:[n]) where
+
+	(o,foo) = adder<n>(a,b,c_in);
+
+end where
+
 sign_extend<n,p>(i:[n]) = (o:[p]) where
 	if n = p then
 		o = i;

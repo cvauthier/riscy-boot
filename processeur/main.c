@@ -38,7 +38,7 @@ int main(int argc, char *argv)
 
 	FILE *prog = fopen("program.bin", "rb");
 
-	char c;
+	int c;
 	int n = 0, ofs = 0;
 	while ((c = getc(prog)) != EOF)
 	{
@@ -50,7 +50,7 @@ int main(int argc, char *argv)
 			n++;
 		}
 	}
-	
+
 	fclose(prog);
 
 	printf("Nb of instructions : %d\n", n);
