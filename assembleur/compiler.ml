@@ -20,7 +20,8 @@ let opc_op    = 0b0110011
 let extract i1 i2 n = (n lsr i1) land ((1 lsl (i2-i1+1)) - 1)
 
 let compile_ins labels curr = function
-  | Ilui(n,rd) -> (n lsl 12) lor (rd lsl rd_ofs) lor opc_lui
+  | Inop -> opc_opimm
+	| Ilui(n,rd) -> (n lsl 12) lor (rd lsl rd_ofs) lor opc_lui
 
 	| Ijal(lbl,rd) -> let n = (Hashtbl.find labels lbl) - curr in
     ((extract 20 20 n) lsl 31) lor ((extract 1 10 n) lsl 21) lor ((extract 11 11 n) lsl 20) lor ((extract 12 19 n) lsl 12) lor

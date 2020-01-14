@@ -32,13 +32,9 @@ let () =
     Compiler.compile_program prog prog_out;
 		close_out prog_out
   with
-	  | Lexer.Lexing_error s ->
+	  | Ast.Syntax_error s ->
 	    report (lexeme_start_p lb, lexeme_end_p lb);
-	    eprintf "lexical error: %s@." s;
+	    eprintf "syntax error: %s@." s;
 	    exit 1
-	  | Assert_failure(s,l,c) ->
-	    report (lexeme_start_p lb, lexeme_end_p lb);
-	    eprintf "assertion failed %s:%d:%d" s l c;
-	    exit 2
 
 

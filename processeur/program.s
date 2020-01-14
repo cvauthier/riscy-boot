@@ -15,4 +15,3 @@ skipped:
 xor %r10,%r10,%r10
 jal add3,%r1
 lui 0,%r13
-
