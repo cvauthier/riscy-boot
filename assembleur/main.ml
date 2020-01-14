@@ -36,5 +36,9 @@ let () =
 	    report (lexeme_start_p lb, lexeme_end_p lb);
 	    eprintf "syntax error: %s@." s;
 	    exit 1
+		| _ ->
+	    report (lexeme_start_p lb, lexeme_end_p lb);
+	    eprintf "parse error@.";
+	    exit 1
 
 

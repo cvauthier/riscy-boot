@@ -36,11 +36,12 @@ inner_instruction:
         | "xor" -> Xor | _ -> err (sprintf "%s is not a binary arithmetical operation" opcode) in
       IBinop(op,rs1,rs2,rd) 
     }
+	| opcode = IDENT r2 = REG COMMA n = CONST COMMA r1 = REG
+		{ test (opcode = "sw") "expected sw"; Isw(r2,r1,n) }
   | opcode = IDENT n = CONST COMMA r1 = REG COMMA r2 = REG
     {
       match opcode with
         | "lw" -> Ilw(r1,n,r2)
-        | "sw" -> Isw(r1,r2,n)
         | "jalr" -> Ijalr(n,r1,r2)
         | _ -> begin
               let op = match opcode with

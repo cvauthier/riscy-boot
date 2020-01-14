@@ -17,31 +17,39 @@ main() = () where
 	rs2 = ins[7..11];
 	rd  = ins[20..24];
 
-	aluop  = mux_n<4>(jalr, 0.0.0.0, ins[1] . ins[17..19]);
+	aluop  = mux_n<4>(jalr+lw+sw, 0.0.0.0, ins[1] . ins[17..19]);
 	op_imm = opc[6] & opc[5] & opc[2] & not(opc[4] + opc[3] + opc[1] + opc[0]);
 	op     = opc[6] & opc[5] & opc[2] & opc[1] & not(opc[4] + opc[3] + opc[0]);
 	lui    = opc[6] & opc[5] & opc[4] & opc[2] & opc[1] & not(opc[3] + opc[0]);
 	jal    = opc[6] & opc[5] & opc[4] & opc[3] & opc[1] & opc[0] & not(opc[2]);
-	jalr   = opc[6] & opc[5] & opc[4] & opc[1] & opc[0] & not(opc[2] & opc[3]);
-	brch	 = opc[6] & opc[5] & opc[1] & opc[0] & not(opc[4] & opc[3] & opc[2]);
+	jalr   = opc[6] & opc[5] & opc[4] & opc[1] & opc[0] & not(opc[2] + opc[3]);
+	brch	 = opc[6] & opc[5] & opc[1] & opc[0] & not(opc[4] + opc[3] + opc[2]);
+	lw		 = opc[6] & opc[5] & not(opc[4] + opc[3] + opc[2] + opc[1] + opc[0]);
+	sw		 = opc[6] & opc[5] & opc[1] & not(opc[4] + opc[3] + opc[2] + opc[0]);
 
 	jal_imm  = ins[0] . ins[12..19] . ins[11] . ins[1..10] . 0;
 	brch_imm = ins[0] . ins[24] . ins[1..6] . ins[20..23] . 0;
-	sw_imm   = ins[0..6] . ins[20..24]
+	sw_imm   = ins[0..6] . ins[20..24];
 	imm 		 = ins[0..11];
 
 	(* Calculs *)
 
 	(rs1_data,rs2_data) = register_block(rs1,rs2,rd,wr_data,true);
-	alu_data2 = mux_n<WORD_SIZE>(op_imm + jalr,sign_extend<12,WORD_SIZE>(imm),rs2_data);
+	alu_data2 = mux_n<WORD_SIZE>(op_imm + jalr + lw + sw,
+										sign_extend<12,WORD_SIZE>(mux_n<12>(sw,sw_imm,imm)),
+										rs2_data);
 	alu_res = alu(rs1_data,alu_data2,aluop);
 	
+	mem_rd_data = access_memory(alu_res[(WORD_SIZE-RAM_ADDR_SIZE)..(WORD_SIZE-1)],rs2_data,sw);
+
 	(* Mise à jour des informations *)
 
 	inc_pc = adder_nocarry<ROM_ADDR_SIZE>(pc,power<ROM_ADDR_SIZE-3>(0).1.0.0,0);
 	
-	wr_data = mux_n<WORD_SIZE>(lui,ins[0..19].power<WORD_SIZE-20>(0),
-																 mux_n<WORD_SIZE>(jal + jalr,power<WORD_SIZE-ROM_ADDR_SIZE>(0).inc_pc,alu_res));
+	wr_data = mux_n<WORD_SIZE>(lui,					ins[0..19].power<WORD_SIZE-20>(0),
+						mux_n<WORD_SIZE>(jal + jalr,	power<WORD_SIZE-ROM_ADDR_SIZE>(0).inc_pc,
+						mux_n<WORD_SIZE>(lw,					mem_rd_data,
+																					alu_res)));
 
 	jal_pc   = adder_nocarry<ROM_ADDR_SIZE>(pc,jal_imm[(20-ROM_ADDR_SIZE+1)..20],0);
 	jalr_pc = alu_res[(WORD_SIZE-ROM_ADDR_SIZE)..(WORD_SIZE-1)];

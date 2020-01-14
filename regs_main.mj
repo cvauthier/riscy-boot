@@ -1,9 +1,0 @@
-#include "regs.mj"
-
-
-main(rd_r1:[REG_SPEC], rd_r2:[REG_SPEC], wr_r:[REG_SPEC], wr_data:[REG_SIZE], rdwrite) = 
-							(rd_data1:[REG_SIZE], rd_data2:[REG_SIZE]) where
-	
-	(rd_data1,rd_data2) = register_block(rd_r1,rd_r2,wr_r,wr_data,rdwrite);
-
-end where

@@ -8,10 +8,14 @@ sub %r5,%r4,%r7 ; résultat : r5 - r4 = 8
 jal skipped,%r1
 
 add3:
-addi 3,%r10,%r10
+xor %r11,%r11,%r11
+lw 0,%r11,%r16
 jalr 0,%r1,%r1
 
 skipped:
 xor %r10,%r10,%r10
+xor %r1,%r1,%r1
+addi 42,%r10,%r10
+sw %r10,0,%r1
 jal add3,%r1
 lui 0,%r13
