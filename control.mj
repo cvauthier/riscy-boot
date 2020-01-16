@@ -16,8 +16,9 @@ main() = () where
 	rs1 = ins[12..16];
 	rs2 = ins[7..11];
 	rd  = ins[20..24];
+	f3 =  ins[17..19];
 
-	aluop  = mux_n<4>(jalr+lw+sw, 0.0.0.0, ins[1] . ins[17..19]);
+	aluop  = mux_n<4>(jalr+lw+sw+brch, brch.0.0.0, (ins[1] & not(op_imm)).f3);
 	op_imm = opc[6] & opc[5] & opc[2] & not(opc[4] + opc[3] + opc[1] + opc[0]);
 	op     = opc[6] & opc[5] & opc[2] & opc[1] & not(opc[4] + opc[3] + opc[0]);
 	lui    = opc[6] & opc[5] & opc[4] & opc[2] & opc[1] & not(opc[3] + opc[0]);
@@ -34,15 +35,18 @@ main() = () where
 
 	(* Calculs *)
 
-	(rs1_data,rs2_data) = register_block(rs1,rs2,rd,wr_data,true);
+	(rs1_data,rs2_data) = register_block(rs1,rs2,rd,wr_data,not(brch + sw));
 	alu_data2 = mux_n<WORD_SIZE>(op_imm + jalr + lw + sw,
 										sign_extend<12,WORD_SIZE>(mux_n<12>(sw,sw_imm,imm)),
 										rs2_data);
-	alu_res = alu(rs1_data,alu_data2,aluop);
+	(alu_res,z,v) = alu(rs1_data,alu_data2,aluop);
 	
 	mem_rd_data = access_memory(alu_res[(WORD_SIZE-RAM_ADDR_SIZE)..(WORD_SIZE-1)],rs2_data,sw);
 
 	(* Mise à jour des informations *)
+
+	brch_jmp = brch & mux(f3[0],f3[2] xor (alu_res[0] xor v), (* BLT et BGE *)
+															f3[2] xor z); (* BEQ et BNE *)
 
 	inc_pc = adder_nocarry<ROM_ADDR_SIZE>(pc,power<ROM_ADDR_SIZE-3>(0).1.0.0,0);
 	
@@ -51,10 +55,13 @@ main() = () where
 						mux_n<WORD_SIZE>(lw,					mem_rd_data,
 																					alu_res)));
 
-	jal_pc   = adder_nocarry<ROM_ADDR_SIZE>(pc,jal_imm[(20-ROM_ADDR_SIZE+1)..20],0);
+	ofs_pc  = adder_nocarry<ROM_ADDR_SIZE>(pc,
+																				 mux_n<ROM_ADDR_SIZE>(jal,jal_imm[(20-ROM_ADDR_SIZE+1)..20],
+																				 													sign_extend<13,ROM_ADDR_SIZE>(brch_imm)),
+																				 0);
 	jalr_pc = alu_res[(WORD_SIZE-ROM_ADDR_SIZE)..(WORD_SIZE-1)];
 
-	new_pc = mux_n<ROM_ADDR_SIZE>(jal, jal_pc, 
+	new_pc = mux_n<ROM_ADDR_SIZE>(jal + brch_jmp, ofs_pc, 
 					 mux_n<ROM_ADDR_SIZE>(jalr, jalr_pc, inc_pc));
 
 end where

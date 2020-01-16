@@ -1,13 +1,5 @@
 #!/bin/bash
 
-./compile_mj regs_main.mj
-mv regs_main.c processeur/test_regs
-mv regs_main.h processeur/test_regs
-cd processeur/test_regs
-gcc -g main.c regs_main.c regs_main.h
-./a.out
-
-cd ../..
 ./compile_mj control.mj
 mv control.c processeur/
 mv control.h processeur/

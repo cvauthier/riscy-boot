@@ -19,9 +19,7 @@ adder<n>(a:[n], b:[n], c_in) = (o:[n], c_out) where
 end where
 
 adder_nocarry<n>(a:[n], b:[n], c_in) = (o:[n]) where
-
 	(o,foo) = adder<n>(a,b,c_in);
-
 end where
 
 sign_extend<n,p>(i:[n]) = (o:[p]) where
@@ -51,20 +49,23 @@ alu_unit(a,b,ainv,binv,c_in,op:[3]) = (s,c_out) where
 	c_out = and_ab + (ai & c_in) + (bi & c_in);
 end where
 
-alu_stack<n>(a:[n],b:[n],ainv,binv,c_in,op:[3]) = (s:[n],c_out) where
+alu_stack<n>(a:[n],b:[n],ainv,binv,c_in,op:[3]) = (s:[n],c_out,z,v) where
 	if n = 1 then
 		(s,c_out) = alu_unit(a,b,ainv,binv,c_in,op);
+		z = not(s);
+		v = c_in xor c_out;
 	else
-		(s_n1,c_n1) = alu_stack<n-1>(a[1..],b[1..],ainv,binv,c_in,op);
+		(s_n1,c_n1,z_n1,v_n1) = alu_stack<n-1>(a[1..],b[1..],ainv,binv,c_in,op);
 		(s_n,c_out) = alu_unit(a[0],b[0],ainv,binv,c_n1,op);
 		s = s_n . s_n1;
+		
+		z = z_n1 & not(s_n);
+		v = c_n1 xor c_out;
 	end if
 end where
 
-alu(a:[WORD_SIZE],b:[WORD_SIZE],op:[4]) = (s:[WORD_SIZE]) where
-	
-	(s,useless) = alu_stack<WORD_SIZE>(a,b,false,op[0],op[0],op[1..3]);
-
+alu(a:[WORD_SIZE],b:[WORD_SIZE],op:[4]) = (s:[WORD_SIZE],z,v) where
+	(s,foo,z,v) = alu_stack<WORD_SIZE>(a,b,false,op[0],op[0],op[1..3]);
 end where
 
 
