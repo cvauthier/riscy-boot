@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ./compile_mj control.mj
-mv control.c processeur/
-mv control.h processeur/
-cd processeur
+mv control.c ../processeur/
+mv control.h ../processeur/
+cd ../processeur
 ./compile
 
