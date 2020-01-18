@@ -16,7 +16,7 @@ rule token = parse
   | entier as s 			{ CONST (Int64.to_int (Int64.of_string (String.lowercase_ascii s))) } 
   | ident as s 				{ IDENT s }
   | "%r" ((chiffre+) as s) { let n = Int64.to_int (Int64.of_string (String.lowercase_ascii s)) in
-														 if n < 1 || n > 31 then 
+														 if n < 0 || n > 31 then 
 														   raise (Syntax_error (Format.sprintf "no register r%d" n));
 														 REG n }											
   | "," { COMMA }

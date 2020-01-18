@@ -18,7 +18,7 @@
 
 %%
 program:
-  | ilist = labeled_ins* EOF { ilist }
+  | LF* ilist = labeled_ins* EOF { ilist }
 
 labeled_ins:
   | l = IDENT DPOINT LF* ins = instruction { (Some l,ins) }

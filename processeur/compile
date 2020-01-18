@@ -1,3 +1,3 @@
 ./riscasm program.s
-gcc -O1 main.c control.c control.h 
+gcc -O3 main.c control.c control.h utility.h utility.c $(sdl-config --cflags --libs) -lSDL_image
 ./a.out
