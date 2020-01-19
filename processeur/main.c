@@ -4,6 +4,7 @@
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
+#include <SDL/SDL_mixer.h>
 
 #include "control.h"
 #include "utility.h"
@@ -67,9 +68,12 @@ int main(int argc, char *argv)
 
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
 	{
-		printf("Erreur : %s\n", SDL_GetError());
+		printf("Erreur SDL : %s\n", SDL_GetError());
 		return 1;
 	}
+	Mix_OpenAudio(44100,MIX_DEFAULT_FORMAT,MIX_DEFAULT_CHANNELS,1024);
+	Mix_AllocateChannels(5);
+	Mix_Music *music = Mix_LoadMUS("Donnees/ambiance.ogg");
 
 	SDL_Surface *screen = SDL_SetVideoMode(640,400,32,SDL_HWSURFACE|SDL_DOUBLEBUF);
 	SDL_WM_SetCaption("Pendule RISC",NULL);
@@ -78,6 +82,17 @@ int main(int argc, char *argv)
 	SDL_Surface *verti = IMG_Load("Donnees/barre_vert.png");
 	SDL_Surface *horiz = IMG_Load("Donnees/barre_horiz.png");
 	SDL_Surface *dots  = IMG_Load("Donnees/points.png");
+
+	char s[21] = {0};
+	SDL_Surface* fire[4] = {0};
+	SDL_Surface* mask[4] = {0};
+	for (int i = 0 ; i < 4 ; i++)
+	{
+		sprintf(s,"Donnees/flammes%d.png",i+1);
+		fire[i] = IMG_Load(s);
+		mask[i] = SDL_CreateRGBSurface(0,640,400,32,0xff000000,0x00ff0000,0x0000ff00,0x000000ff);
+		SDL_FillRect(mask[i],NULL,SDL_MapRGBA(mask[i]->format,255,0,0,20+20*i));
+	}
 
 	SDL_Event event;
 
@@ -102,6 +117,10 @@ int main(int argc, char *argv)
 				{
 					space_pressed = 1;
 					frenzy = !frenzy;
+					if (frenzy)
+						Mix_PlayMusic(music,-1);
+					else
+						Mix_HaltMusic();
 				}
 				if (event.key.keysym.sym == SDLK_ESCAPE)
 					stop = 1;
@@ -159,6 +178,12 @@ int main(int argc, char *argv)
 			SDL_BlitSurface(dots, NULL, screen, &pos);
 		}
 
+		if (frenzy)
+		{
+			SDL_BlitSurface(fire[nbframes%4],NULL,screen,NULL);
+			SDL_BlitSurface(mask[abs(3-nbframes%7)],NULL,screen,NULL);
+		}
+
 		SDL_Flip(screen);
 
 		int t2 = SDL_GetTicks();
@@ -169,6 +194,14 @@ int main(int argc, char *argv)
 	SDL_FreeSurface(verti);
 	SDL_FreeSurface(horiz);
 	SDL_FreeSurface(dots);
+
+	for (int i = 0 ; i < 4 ; i++)
+	{
+		SDL_FreeSurface(fire[i]);
+		SDL_FreeSurface(mask[i]);
+	}
+
+	Mix_FreeMusic(music);
 
 	SDL_Quit();
 

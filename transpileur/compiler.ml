@@ -84,7 +84,8 @@ let compile_expr_byte env resvar i fmt = function
 								 (match op with | Or -> "|" | And | Nand -> "&" | Xor -> "^")
 								 (print_arg_byte env i) a2
 								 print_mask ((size_arg env a1) - 8*i)
-  | Emux(a,a1,a2) -> fprintf fmt "(%a) ? (%a) : (%a)" (print_arg_byte env 0) a
+  | Emux(a,a1,a2) -> fprintf fmt "(%a) ? (%a) : (%a)" 
+													(print_arg_byte env 0) a
 												  (print_arg_byte env i) a1
 												  (print_arg_byte env i) a2
   | Erom(_,_,raddr) 

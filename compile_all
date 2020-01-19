@@ -1,0 +1,11 @@
+cd assembleur
+make
+cd ..
+cp assembleur/riscasm processeur/
+cd transpileur
+make
+cd ..
+cp transpileur/neatlist netlists/
+cd netlists
+./export
+
