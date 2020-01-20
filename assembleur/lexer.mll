@@ -13,9 +13,9 @@ let entier = ("-"? chiffre+) | ("0x" | "0X") hexa+
 rule token = parse
   | '\n' 			        { new_line lexbuf; LF }    
   | [' ' '\t'] 				{ token lexbuf }     (* skip blanks *)
-  | entier as s 			{ CONST (Int64.to_int (Int64.of_string (String.lowercase_ascii s))) } 
+  | entier as s 			{ CONST (Int64.to_int (Int64.of_string (String.lowercase s))) } 
   | ident as s 				{ IDENT s }
-  | "%r" ((chiffre+) as s) { let n = Int64.to_int (Int64.of_string (String.lowercase_ascii s)) in
+  | "%r" ((chiffre+) as s) { let n = Int64.to_int (Int64.of_string (String.lowercase s)) in
 														 if n < 0 || n > 31 then 
 														   raise (Syntax_error (Format.sprintf "no register r%d" n));
 														 REG n }											

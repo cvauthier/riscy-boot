@@ -83,7 +83,7 @@ let compile_expr_byte env resvar i fmt = function
 								 (print_arg_byte env i) a1
 								 (match op with | Or -> "|" | And | Nand -> "&" | Xor -> "^")
 								 (print_arg_byte env i) a2
-								 print_mask ((size_arg env a1) - 8*i)
+								 print_mask (if op <> Nand then 8 else ((size_arg env a1) - 8*i))
   | Emux(a,a1,a2) -> fprintf fmt "(%a) ? (%a) : (%a)" 
 													(print_arg_byte env 0) a
 												  (print_arg_byte env i) a1
@@ -169,7 +169,7 @@ let compile_source name env prog out =
 
 let compile_header name env out =
 	let fmt = Format.formatter_of_out_channel out in
-	let name = String.uppercase_ascii name in
+	let name = String.uppercase name in
 	
 	let print_struct fmt () = 
 		Hashtbl.iter (fun s (nb_addr,nb_bytes) -> fprintf fmt "@,unsigned char **mem_%s; // Intended size : %d x %d" s nb_addr nb_bytes) env.mems;
@@ -179,9 +179,13 @@ let compile_header name env out =
 	fprintf fmt "struct State@,@[<v 2>{%a@]@,};@,@,typedef struct State State;@,@," print_struct ();
 	fprintf fmt "%a;@,@,#endif@,@]@?" compile_prototype env
 
+let remove_ext f =
+	try Filename.chop_extension f
+	with | Invalid_argument _ -> f
+
 let compile_program prog filename =
 	let env = build_env prog in
-	let chopped = Filename.remove_extension filename in
+	let chopped = remove_ext filename in
 	let name = Str.global_replace (Str.regexp "[^a-zA-Z_]+") "" (Filename.basename chopped) in
 	let out_h = open_out (chopped^".h") and out_c = open_out (chopped^".c") in
 	compile_header name env out_h;
